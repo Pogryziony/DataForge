@@ -11,7 +11,7 @@ export function safeSpreadsheetText(value: string, raw = false): string {
   return !raw && /^[\s\uFEFF]*[=+@\-\t\r\n]/.test(value) ? `'${value}` : value;
 }
 function escapeXml(value: string): string {
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.test(value)) throw new DomainError('XML_CHARACTERS', 'XML 1.0 cannot represent these control characters; choose JSON for this test case');
+  if ([...value].some(char => char.charCodeAt(0) < 32 && ![9, 10, 13].includes(char.charCodeAt(0)))) throw new DomainError('XML_CHARACTERS', 'XML 1.0 cannot represent these control characters; choose JSON for this test case');
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 function xmlValue(value: JsonValue, name?: string): string {

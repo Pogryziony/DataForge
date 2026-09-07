@@ -18,3 +18,5 @@ export type WorkerResponse =
   | { type: 'result'; jobId: string; preview: DataRecord[]; count: number; manifest?: GenerationManifest; datasets?: { name: string; count: number }[]; report?: string }
   | { type: 'artifact'; jobId: string; artifact: ExportArtifact }
   | { type: 'error'; jobId: string; message: string };
+
+export type WorkerAction = { [Kind in WorkerRequest['type']]: Omit<Extract<WorkerRequest, { type: Kind }>, 'jobId'> }[WorkerRequest['type']];
