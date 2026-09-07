@@ -1,0 +1,46 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { loadTextProvider } from '../infrastructure/faker';
+import { createGeneratorRegistry, type GeneratorDefinition } from './generators';
+import { GenerationSession, validateRecord } from './engine';
+import type { GenerationConfig } from './types';
+import { generateDatasets } from './datasets';
+
+let registry: Map<string, GeneratorDefinition>;
+beforeAll(async () => { registry = createGeneratorRegistry(await loadTextProvider(['pl', 'da'])); });
+const config: GenerationConfig = {
+  seed: 'example', referenceDate: '2026-09-07', locale: 'da', count: 50,
+  schema: { id: 'customer', name: 'Customer', version: 1, fields: [
+    { id: 'id', name: 'id', generator: 'uuid', unique: true },
+    { id: 'cpr', name: 'cpr', generator: 'cpr', options: { birthDateField: 'birthDate', sexField: 'sex' } },
+    { id: 'birth', name: 'birthDate', generator: 'birthDate' },
+    { id: 'sex', name: 'sex', generator: 'enum', options: { values: ['female', 'male'] } },
+  ] },
+};
+describe('schema generation', () => {
+  it('resolves dependencies and validates each generated row', () => {
+    const rows = new GenerationSession(config, registry).nextBatch(50);
+    rows.forEach(row => expect(validateRecord(row, config)).toEqual([]));
+  });
+  it('produces identical results with different batch sizes', () => {
+    const a = new GenerationSession(config, registry), b = new GenerationSession(config, registry);
+    expect(a.nextBatch(50)).toEqual([...b.nextBatch(7), ...b.nextBatch(19), ...b.nextBatch(24)]);
+  });
+  it('rejects duplicate names, cycles, missing references and uniqueness exhaustion', () => {
+    const make = (fields: GenerationConfig['schema']['fields']) => new GenerationSession({ ...config, schema: { ...config.schema, fields } }, registry);
+    expect(() => make([{ id: 'a', name: 'a', generator: 'uuid', rule: { operation: 'copy', fields: ['a'] } }])).toThrow('Cyclic');
+    expect(() => make([{ id: 'a', name: 'a', generator: 'uuid', rule: { operation: 'copy', fields: ['missing'] } }])).toThrow('Referenced');
+    const session = make([{ id: 'a', name: 'a', generator: 'constant', unique: true, options: { value: 'only' } }]);
+    expect(() => session.nextBatch(2)).toThrow('Unique');
+  });
+  it('keeps references in relational datasets', () => {
+    const result = generateDatasets([
+      { name: 'orders', count: 20, schema: { id: 'orders', name: 'Orders', version: 1, fields: [
+        { id: 'id', name: 'id', generator: 'uuid' },
+        { id: 'customerId', name: 'customerId', generator: 'uuid', rule: { operation: 'foreignKey', dataset: 'customers', targetField: 'id' } },
+      ] } },
+      { name: 'customers', count: 4, schema: config.schema },
+    ], config, registry);
+    const ids = new Set(result.customers.map(row => row.id));
+    result.orders.forEach(row => expect(ids.has(row.customerId)).toBe(true));
+  });
+});
