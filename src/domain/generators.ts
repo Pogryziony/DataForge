@@ -1,4 +1,4 @@
-import { addDays, ageOn, randomDate } from './dates';
+import { addDays, ageOn, randomDate, zonedTimestamp } from './dates';
 import { DomainError } from './errors';
 import { generateCpr, generateCvr, generatePNumber, decodeCpr } from './identifiers/denmark';
 import { generateNip, generatePesel, generatePolishId, generateRegon } from './identifiers/poland';
@@ -74,7 +74,11 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
     const factor = 10 ** precision;
     return c.random.integer(Math.ceil(numberOption(c.field, 'min', 0) * factor), Math.floor(numberOption(c.field, 'max', 1000) * factor)) / factor;
   });
-  add('boolean', 'Boolean', 'General', c => c.random.next() < numberOption(c.field, 'trueRate', 0.5));
+  add('boolean', 'Boolean', 'General', c => {
+    const rate = numberOption(c.field, 'trueRate', 0.5);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 1) throw new DomainError('BOOLEAN_RATE', 'trueRate must be between 0 and 1');
+    return c.random.next() < rate;
+  });
   add('constant', 'Constant', 'General', c => c.field.options?.value ?? null);
   add('sequence', 'Sequence', 'General', c => numberOption(c.field, 'start', 1) + c.index * numberOption(c.field, 'step', 1));
   add('enum', 'Weighted dictionary', 'General', c => {
@@ -112,7 +116,7 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
   add('timestamp', 'Timestamp', 'General', c => {
     const date = new Date(`${randomDate(c.random, stringOption(c.field, 'min', '2020-01-01'), stringOption(c.field, 'max', c.config.referenceDate))}T12:00:00.000Z`);
     const zone = stringOption(c.field, 'timeZone', 'UTC');
-    return zone === 'UTC' ? date.toISOString() : new Intl.DateTimeFormat('sv-SE', { timeZone: zone, dateStyle: 'short', timeStyle: 'long', hour12: false }).format(date);
+    return zonedTimestamp(date, zone);
   });
   add('age', 'Age', 'Personal', c => ageOn(contextDate(c), c.config.referenceDate));
   add('currency', 'Currency', 'Banking', c => ({ pl: 'PLN', da: 'DKK', de: 'EUR', en_GB: 'GBP', en_US: 'USD' })[locale(c)]);
@@ -126,7 +130,11 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
   add('address', 'Synthetic address', 'Address', c => locale(c) === 'da' ? syntheticDanishAddress(c.random) : text.address(locale(c), textSeed(c)));
   add('pesel', 'PESEL', 'Poland', c => generatePesel(c.random, contextDate(c), contextSex(c)));
   add('nip', 'NIP', 'Poland', c => generateNip(c.random));
-  add('regon', 'REGON', 'Poland', c => generateRegon(c.random, numberOption(c.field, 'length', 9) === 14 ? 14 : 9));
+  add('regon', 'REGON', 'Poland', c => {
+    const length = numberOption(c.field, 'length', 9);
+    if (length !== 9 && length !== 14) throw new DomainError('REGON_LENGTH', 'REGON length must be 9 or 14');
+    return generateRegon(c.random, length);
+  });
   add('polishId', 'Polish identity document', 'Poland', c => generatePolishId(c.random));
   add('cpr', 'CPR', 'Denmark', c => {
     const profile = stringOption(c.field, 'profile', 'standard') as CprProfile;
@@ -135,7 +143,7 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
     const pools = c.config.pools?.filter(pool => pool.kind === 'cpr' && (!sourceId || pool.source.id === sourceId)) ?? [];
     const values = pools.flatMap(pool => pool.records.map(record => String(record.cpr)));
     if (profile === 'official-test-pool' && !stringOption(c.field, 'birthDate') && !stringOption(c.field, 'birthDateField')) {
-      const sex = c.field.options?.sex;
+      const sex = stringOption(c.field, 'sexField') ? readPath(c.row, stringOption(c.field, 'sexField')) : c.field.options?.sex;
       const candidates = values.filter(value => !sex || decodeCpr(value).sex === sex);
       const chosen = c.random.pick(candidates).replace('-', '');
       return c.field.options?.formatted ? `${chosen.slice(0, 6)}-${chosen.slice(6)}` : chosen;

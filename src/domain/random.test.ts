@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import { SeededRandom } from './random';
-import { ageOn, parseDate } from './dates';
+import { ageOn, parseDate, zonedTimestamp } from './dates';
 
 describe('deterministic primitives', () => {
   it('replays seeded streams', () => {
@@ -24,5 +24,10 @@ describe('deterministic primitives', () => {
     expect(() => parseDate('2023-02-29')).toThrow();
     expect(parseDate('2024-02-29').getUTCDate()).toBe(29);
     expect(ageOn('2000-09-08', '2026-09-07')).toBe(25);
+  });
+  it('preserves the instant with explicit winter and summer Copenhagen offsets', () => {
+    expect(zonedTimestamp(new Date('2026-01-15T12:00:00Z'), 'Europe/Copenhagen')).toBe('2026-01-15T13:00:00+01:00');
+    expect(zonedTimestamp(new Date('2026-07-15T12:00:00Z'), 'Europe/Copenhagen')).toBe('2026-07-15T14:00:00+02:00');
+    expect(() => zonedTimestamp(new Date(), 'not-a-zone')).toThrow('IANA');
   });
 });
