@@ -11,9 +11,9 @@ test('generates deterministic CPR and exports full JSON', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await generate(page);
   await expect(page.locator('tbody tr')).toHaveCount(10);
-  const initial = await page.locator('tbody').innerText();
+  const initial = await page.locator('tbody').textContent();
   await generate(page);
-  await expect(page.locator('tbody')).toHaveText(initial);
+  await expect(page.locator('tbody')).toHaveText(initial!);
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export full result' }).click();
   const download = await downloadPromise;
