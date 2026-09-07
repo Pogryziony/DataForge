@@ -32,6 +32,12 @@ it('pseudonymizes consistently across related identifiers without retaining orig
   expect(output[0].id).not.toContain('sensitive');
   expect(rows[0].id).toBe('sensitive');
 });
+it('replaces selected fields with generated fixtures without changing the input', async () => {
+  const input = [{ email: 'private@example.com', id: '0001' }];
+  const output = await transformRecords(input, [{ field: 'email', operation: 'generate', generator: 'email' }], '', [{ email: 'synthetic@example.test' }]);
+  expect(output).toEqual([{ email: 'synthetic@example.test', id: '0001' }]);
+  expect(input[0].email).toBe('private@example.com');
+});
 it('generates syntactically valid TypeScript fixtures', () => {
   for (const target of ['playwright', 'typescript'] as const) {
     const source = generateCode([{ name: 'ÆØÅ', id: '0001' }], target);

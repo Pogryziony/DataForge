@@ -72,7 +72,15 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
       records = result.rows;
       report = `${result.coveredPairs}/${result.totalPairs} allowed pairs covered. ${result.complete ? 'Complete coverage.' : 'Incomplete: row limit reached.'}`;
     } else if (request.type === 'transform') {
-      records = await transformRecords(request.records, request.rules, request.secret);
+      const replacements = request.rules.filter(rule => rule.operation === 'generate');
+      let generated: DataRecord[] = [];
+      if (replacements.length && request.records.length) {
+        if (!request.config) throw new DomainError('TRANSFORM_CONFIG', 'Synthetic replacement requires generation settings');
+        const registry = createGeneratorRegistry(await loadTextProvider([request.config.locale]));
+        const config = { ...request.config, count: request.records.length, schema: { id: 'replacement', name: 'Synthetic replacement', version: 1, fields: replacements.map(rule => ({ id: rule.field, name: rule.field, generator: rule.generator ?? 'text', options: rule.options })) } };
+        generated = new GenerationSession(config, registry).nextBatch(request.records.length);
+      }
+      records = await transformRecords(request.records, request.rules, request.secret, generated);
       report = 'Local transformation complete. Masking and pseudonymization do not guarantee anonymity.';
     }
     send({ type: 'result', jobId: request.jobId, preview: records.slice(0, 250), count: Object.keys(datasets).length ? Object.values(datasets).reduce((total, values) => total + values.length, 0) : records.length, manifest, datasets: Object.entries(datasets).map(([name, rows]) => ({ name, count: rows.length })), report });

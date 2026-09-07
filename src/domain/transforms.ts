@@ -4,19 +4,21 @@ import type { DataRecord, JsonValue } from './types';
 
 export interface TransformRule {
   field: string;
-  operation: 'mask' | 'remove' | 'pseudonymize' | 'replace' | 'shiftDate' | 'trim' | 'uppercase' | 'lowercase';
+  operation: 'mask' | 'remove' | 'pseudonymize' | 'replace' | 'generate' | 'shiftDate' | 'trim' | 'uppercase' | 'lowercase';
+  generator?: string;
+  options?: Record<string, JsonValue>;
   value?: JsonValue;
   keepLast?: number;
   domain?: string;
 }
-export async function transformRecords(records: DataRecord[], rules: TransformRule[], secret = ''): Promise<DataRecord[]> {
+export async function transformRecords(records: DataRecord[], rules: TransformRule[], secret = '', generated: DataRecord[] = []): Promise<DataRecord[]> {
   const needsSecret = rules.some(rule => rule.operation === 'pseudonymize');
   if (needsSecret && secret.length < 16) throw new DomainError('PSEUDONYM_KEY', 'Provide a private key of at least 16 characters; it will not be saved');
   const encoder = new TextEncoder();
   const key = needsSecret ? await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']) : null;
   const cache = new Map<string, string>();
   const result: DataRecord[] = [];
-  for (const original of records) {
+  for (const [index, original] of records.entries()) {
     const row = structuredClone(original);
     for (const rule of rules) {
       if (!Object.hasOwn(row, rule.field)) continue;
@@ -24,6 +26,11 @@ export async function transformRecords(records: DataRecord[], rules: TransformRu
       switch (rule.operation) {
         case 'remove': delete row[rule.field]; break;
         case 'replace': row[rule.field] = structuredClone(rule.value ?? null); break;
+        case 'generate': {
+          if (!Object.hasOwn(generated[index] ?? {}, rule.field)) throw new DomainError('TRANSFORM_GENERATOR', 'Synthetic replacement is not available', rule.field);
+          row[rule.field] = structuredClone(generated[index][rule.field]);
+          break;
+        }
         case 'mask': {
           const text = String(value), keep = rule.keepLast ?? 4;
           if (!Number.isInteger(keep) || keep < 0) throw new DomainError('MASK_LENGTH', 'Visible suffix length must be non-negative');
