@@ -48,7 +48,7 @@ test('creates negative cases with explicit validation metadata', async ({ page }
   await page.getByLabel('Mutation', { exact: true }).selectOption('missing');
   await generate(page);
   await expect(page.locator('thead')).toContainText('_testCase');
-  await page.getByRole('button', { name: 'JSON', exact: true }).click();
+  await page.getByRole('region', { name: 'Data preview' }).getByRole('button', { name: 'JSON', exact: true }).click();
   await expect(page.locator('.json-preview')).toContainText('REQUIRED');
 });
 test('builds relational datasets and constrained pairwise coverage', async ({ page }) => {
