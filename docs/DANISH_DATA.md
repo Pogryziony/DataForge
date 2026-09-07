@@ -6,10 +6,10 @@ DataForge distinguishes local syntax/checksum validation, user-imported source d
 
 CPR is a string, never a number. `formatted: true` produces `DDMMYY-XXXX`; otherwise the ten digits are returned. Leading zeros are preserved.
 
-| Profile | Behavior |
-| --- | --- |
-| `standard` | Valid date, supported century/serial rules and encoded sex; no mandatory modulus 11 |
-| `legacy-mod11` | The same structure plus the legacy modulus-11 check; fails if no candidate fits |
+| Profile              | Behavior                                                                                      |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| `standard`           | Valid date, supported century/serial rules and encoded sex; no mandatory modulus 11           |
+| `legacy-mod11`       | The same structure plus the legacy modulus-11 check; fails if no candidate fits               |
 | `official-test-pool` | Selects only from a locally imported, documented pool; never synthesizes an “official” number |
 
 The century rules support birth dates from 1858 to 2057. The seventh digit disambiguates the century: 0–3 means 1900–1999; 4/9 means 2000–2036 for years 00–36 and 1937–1999 otherwise; 5–8 means 2000–2057 for years 00–57 and 1858–1899 otherwise. The last digit is odd for encoded male and even for encoded female. This is the identifier's encoding, not a model of gender identity.
@@ -32,14 +32,14 @@ DK IBAN has 18 characters: `DK`, two check digits, a four-digit registration num
 
 Normalized DAR records must have these string fields:
 
-| Field | Contract |
-| --- | --- |
-| `adresseId`, `husnummerId`, `navngivenvejId` | Original UUID strings from the source |
-| `streetName`, `houseNumber` | Non-empty source text |
-| `postalCode`, `municipalityCode`, `roadCode` | Four-digit strings, including leading zeros |
-| `postalDistrict` | Non-empty source text |
-| `floor`, `door`, `supplementaryTown` | Optional text; keep source meaning |
-| `coordinates`, `coordinateReferenceSystem` | Optional; coordinates require an explicit source CRS |
+| Field                                        | Contract                                             |
+| -------------------------------------------- | ---------------------------------------------------- |
+| `adresseId`, `husnummerId`, `navngivenvejId` | Original UUID strings from the source                |
+| `streetName`, `houseNumber`                  | Non-empty source text                                |
+| `postalCode`, `municipalityCode`, `roadCode` | Four-digit strings, including leading zeros          |
+| `postalDistrict`                             | Non-empty source text                                |
+| `floor`, `door`, `supplementaryTown`         | Optional text; keep source meaning                   |
+| `coordinates`, `coordinateReferenceSystem`   | Optional; coordinates require an explicit source CRS |
 
 Duplicate address IDs, inconsistent house-to-road relations and conflicting named-road street names are rejected. Structural checks do not establish register authenticity. Coordinates are preserved, not transformed or geocoded.
 

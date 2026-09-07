@@ -13,10 +13,35 @@ Import this as a configuration in Schema designer:
   "version": 1,
   "fields": [
     { "id": "id", "name": "id", "generator": "uuid", "unique": true },
-    { "id": "birth", "name": "birthDate", "generator": "birthDate", "options": { "minDate": "1980-01-01", "maxDate": "2000-12-31" } },
-    { "id": "sex", "name": "sex", "generator": "enum", "options": { "values": ["female", "male"] } },
-    { "id": "cpr", "name": "cpr", "generator": "cpr", "options": { "birthDateField": "birthDate", "sexField": "sex", "profile": "standard", "formatted": true } },
-    { "id": "age", "name": "age", "generator": "integer", "rule": { "operation": "age", "fields": ["birthDate"] } }
+    {
+      "id": "birth",
+      "name": "birthDate",
+      "generator": "birthDate",
+      "options": { "minDate": "1980-01-01", "maxDate": "2000-12-31" }
+    },
+    {
+      "id": "sex",
+      "name": "sex",
+      "generator": "enum",
+      "options": { "values": ["female", "male"] }
+    },
+    {
+      "id": "cpr",
+      "name": "cpr",
+      "generator": "cpr",
+      "options": {
+        "birthDateField": "birthDate",
+        "sexField": "sex",
+        "profile": "standard",
+        "formatted": true
+      }
+    },
+    {
+      "id": "age",
+      "name": "age",
+      "generator": "integer",
+      "rule": { "operation": "age", "fields": ["birthDate"] }
+    }
   ]
 }
 ```
@@ -25,23 +50,23 @@ Dependencies are evaluated in topological order, independent of display order. C
 
 ## Common options
 
-| Generator | Options |
-| --- | --- |
-| `integer`, `amount` | `min`, `max`; amount is integer minor currency units |
-| `decimal` | `min`, `max`, `precision` (0–6) |
-| `boolean` | `trueRate` (0–1) |
-| `sequence` | `start`, `step` |
-| `constant` | `value`, any JSON value |
-| `enum` | `values`, optional matching `weights`, `excluded` |
-| `text` | `minLength`, `maxLength`, Unicode `alphabet`, `prefix`, `suffix`; lengths exclude prefix/suffix |
+| Generator                          | Options                                                                                                          |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `integer`, `amount`                | `min`, `max`; amount is integer minor currency units                                                             |
+| `decimal`                          | `min`, `max`, `precision` (0–6)                                                                                  |
+| `boolean`                          | `trueRate` (0–1)                                                                                                 |
+| `sequence`                         | `start`, `step`                                                                                                  |
+| `constant`                         | `value`, any JSON value                                                                                          |
+| `enum`                             | `values`, optional matching `weights`, `excluded`                                                                |
+| `text`                             | `minLength`, `maxLength`, Unicode `alphabet`, `prefix`, `suffix`; lengths exclude prefix/suffix                  |
 | `birthDate`, `pesel`, `cpr`, `age` | `birthDate` or `birthDateField`; alternatively `minDate`, `maxDate`; identifiers also accept `sex` or `sexField` |
-| `date`, `timestamp` | ISO date `min`, `max`; timestamp accepts IANA `timeZone` (default UTC) |
-| `phone` | `international` (default true); synthetic national lengths, not dialability validation |
-| `iban` | `country`: PL, DK, DE or GB |
-| `regon` | `length`: 9 or 14 |
-| `cpr` | `profile`, `formatted`, `sourceId` |
-| `dar` | `sourceId` |
-| `security` | `category`: html, sql, path, crlf, csv, unicode or long; `length` for long |
+| `date`, `timestamp`                | ISO date `min`, `max`; timestamp accepts IANA `timeZone` (default UTC)                                           |
+| `phone`                            | `international` (default true); synthetic national lengths, not dialability validation                           |
+| `iban`                             | `country`: PL, DK, DE or GB                                                                                      |
+| `regon`                            | `length`: 9 or 14                                                                                                |
+| `cpr`                              | `profile`, `formatted`, `sourceId`                                                                               |
+| `dar`                              | `sourceId`                                                                                                       |
+| `security`                         | `category`: html, sql, path, crlf, csv, unicode or long; `length` for long                                       |
 
 Also available: `uuid`, `firstName`, `lastName`, `fullName`, `username`, `email`, `company`, `time`, `currency`, `nrb`, `testCard`, `url`, `ipv4`, `ipv6`, `address`, `nip`, `polishId`, `cvr`, `pNumber`, `vatDk`, `bankDk`, `addressDk`. Faker text supports pl, da, de, en_GB and en_US; a field's `locale` overrides the run locale. Email/URL fixtures use example domains; IPs use documentation ranges. `testCard` uses three published [Stripe test cards](https://docs.stripe.com/testing), for Stripe test mode only.
 

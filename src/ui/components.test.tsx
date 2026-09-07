@@ -15,7 +15,16 @@ it('adds fields and supports accessible keyboard-order buttons', () => {
   expect(screen.getAllByRole('button', { name: 'Move field up' })[0]).toBeDisabled();
 });
 it('renders security strings as text without inserting markup', () => {
-  const { container } = render(<Preview rows={[{ value: '<script>window.bad=true</script>' }]} count={1} busy={false} progress={100} error="" report="" />);
+  const { container } = render(
+    <Preview
+      rows={[{ value: '<script>window.bad=true</script>' }]}
+      count={1}
+      busy={false}
+      progress={100}
+      error=""
+      report=""
+    />,
+  );
   expect(container.querySelector('script')).toBeNull();
   expect(screen.getByText('<script>window.bad=true</script>')).toBeInTheDocument();
 });

@@ -12,8 +12,12 @@ it('roundtrips CSV text, quotes, Unicode and leading zeros', async () => {
 });
 it('protects formula-like CSV values and safely represents SQL text', async () => {
   expect(String((await exportRecords([{ value: '=1+1' }], 'csv')).contents)).toContain("'=1+1");
-  expect(String((await exportRecords([{ value: "O'Brien" }], 'sql')).contents)).toContain("O''Brien");
-  expect(String((await exportRecords([{ value: '<script>&' }], 'xml')).contents)).toContain('&lt;script&gt;&amp;');
+  expect(String((await exportRecords([{ value: "O'Brien" }], 'sql')).contents)).toContain(
+    "O''Brien",
+  );
+  expect(String((await exportRecords([{ value: '<script>&' }], 'xml')).contents)).toContain(
+    '&lt;script&gt;&amp;',
+  );
   expect(() => parseSafeJson('{"__proto__": {"polluted": true}}')).toThrow('Unsafe');
 });
 it('exports XLSX identifiers as strings and never formula objects', async () => {
@@ -26,7 +30,10 @@ it('exports XLSX identifiers as strings and never formula objects', async () => 
 });
 it('pseudonymizes consistently across related identifiers without retaining originals', async () => {
   const rows = [{ id: 'sensitive', customerId: 'sensitive' }];
-  const rules = [{ field: 'id', operation: 'pseudonymize' as const }, { field: 'customerId', operation: 'pseudonymize' as const }];
+  const rules = [
+    { field: 'id', operation: 'pseudonymize' as const },
+    { field: 'customerId', operation: 'pseudonymize' as const },
+  ];
   const output = await transformRecords(rows, rules, 'private-test-key-at-least-16');
   expect(output[0].id).toBe(output[0].customerId);
   expect(output[0].id).not.toContain('sensitive');
@@ -34,14 +41,22 @@ it('pseudonymizes consistently across related identifiers without retaining orig
 });
 it('replaces selected fields with generated fixtures without changing the input', async () => {
   const input = [{ email: 'private@example.com', id: '0001' }];
-  const output = await transformRecords(input, [{ field: 'email', operation: 'generate', generator: 'email' }], '', [{ email: 'synthetic@example.test' }]);
+  const output = await transformRecords(
+    input,
+    [{ field: 'email', operation: 'generate', generator: 'email' }],
+    '',
+    [{ email: 'synthetic@example.test' }],
+  );
   expect(output).toEqual([{ email: 'synthetic@example.test', id: '0001' }]);
   expect(input[0].email).toBe('private@example.com');
 });
 it('generates syntactically valid TypeScript fixtures', () => {
   for (const target of ['playwright', 'typescript'] as const) {
     const source = generateCode([{ name: 'ÆØÅ', id: '0001' }], target);
-    const result = ts.transpileModule(source, { reportDiagnostics: true, compilerOptions: { target: ts.ScriptTarget.ES2022 } });
+    const result = ts.transpileModule(source, {
+      reportDiagnostics: true,
+      compilerOptions: { target: ts.ScriptTarget.ES2022 },
+    });
     expect(result.diagnostics).toEqual([]);
   }
 });

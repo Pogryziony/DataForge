@@ -18,7 +18,9 @@ it('saves revisions and restores without overwriting history', async () => {
 it('migrates an existing v1 template to version history', async () => {
   const old = new Dexie('test-migration');
   old.version(1).stores({ templates: 'id, name, updatedAt' });
-  await old.table('templates').put({ id: 'one', name: 'Old', schema: TEMPLATES[0].schema, updatedAt: '2026-01-01' });
+  await old
+    .table('templates')
+    .put({ id: 'one', name: 'Old', schema: TEMPLATES[0].schema, updatedAt: '2026-01-01' });
   old.close();
   const current = new DataForgeDatabase('test-migration');
   expect(await current.revisions.count()).toBe(1);

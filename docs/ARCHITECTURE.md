@@ -10,19 +10,19 @@ Dexie schema v2 contains templates, revisions, sources and history with a v1 mig
 
 ## Bounds
 
-| Input/workload | Limit |
-| --- | --- |
-| Generated records | 100,000 per run, including the sum of relational datasets |
-| Schema | 200 field definitions, nesting depth 8 |
-| Array | 0–1000 items; multiplicative output also checked |
-| Text/security sample | 100,000 characters per value |
+| Input/workload            | Limit                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| Generated records         | 100,000 per run, including the sum of relational datasets                      |
+| Schema                    | 200 field definitions, nesting depth 8                                         |
+| Array                     | 0–1000 items; multiplicative output also checked                               |
+| Text/security sample      | 100,000 characters per value                                                   |
 | Estimated retained output | 256 MiB per generation session; heuristic, not a hard process-memory guarantee |
-| Unique/composite retries | 1000 attempts; exhausted finite domains fail explicitly |
-| CSV/JSON import | 20 MiB, at most 100,000 records |
-| JSON parsing | Depth 14, 3 million nodes, unsafe keys rejected |
-| Pairwise | 2–10 parameters, at most 10,000 Cartesian candidates |
-| Generated code | At most 1000 records |
-| Preview | First 250 records, 20 per page; first relational dataset only |
+| Unique/composite retries  | 1000 attempts; exhausted finite domains fail explicitly                        |
+| CSV/JSON import           | 20 MiB, at most 100,000 records                                                |
+| JSON parsing              | Depth 14, 3 million nodes, unsafe keys rejected                                |
+| Pairwise                  | 2–10 parameters, at most 10,000 Cartesian candidates                           |
+| Generated code            | At most 1000 records                                                           |
+| Preview                   | First 250 records, 20 per page; first relational dataset only                  |
 
 For datasets, the export selector chooses each full dataset separately. There is no automatic ZIP of related exports. Constraints may require reducing count, especially for uniqueness over small reference pools. Null/empty values allowed by field rates are not counted as unique occupied values. The output-size estimate cannot predict temporary XLSX/serialization buffers or every custom rule's expanded output.
 
