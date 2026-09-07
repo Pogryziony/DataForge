@@ -153,7 +153,7 @@ export function ImportPanel({
       2,
     ),
   );
-  async function useMappedReference() {
+  async function loadMappedReference() {
     try {
       const mapped = mapColumns(records, parseSafeJson(mapping) as Record<string, string>);
       const pool = importReferencePool(
@@ -361,7 +361,7 @@ export function ImportPanel({
               onChange={(event) => setSourceMetadata(event.target.value)}
             />
           </label>
-          <button disabled={busy} onClick={() => void useMappedReference()}>
+          <button disabled={busy} onClick={() => void loadMappedReference()}>
             {t('Use mapped reference pool', 'Użyj zmapowanej puli')}
           </button>
         </details>
