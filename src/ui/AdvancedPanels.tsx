@@ -30,6 +30,16 @@ export function ImportPanel({ config, run, busy, onPool, pools }: { config: Gene
   const [secret, setSecret] = useState('');
   const [error, setError] = useState('');
   const [rememberPool, setRememberPool] = useState(false);
+  const [poolKind, setPoolKind] = useState<'dar' | 'cpr'>('dar');
+  const [sourceMetadata, setSourceMetadata] = useState(JSON.stringify({ id: '', title: '', url: '', retrievedAt: '', version: '', license: '' }, null, 2));
+  async function useMappedReference() {
+    try {
+      const mapped = mapColumns(records, parseSafeJson(mapping) as Record<string, string>);
+      const pool = importReferencePool(JSON.stringify({ kind: poolKind, source: parseSafeJson(sourceMetadata), records: mapped }));
+      if (rememberPool) await database.sources.put(pool);
+      onPool(pool); setError('');
+    } catch (error) { setError(errorMessage(error)); }
+  }
   async function importFile(file: File | undefined, reference: boolean) {
     if (!file) return;
     try {
@@ -51,6 +61,7 @@ export function ImportPanel({ config, run, busy, onPool, pools }: { config: Gene
     <label className="file-drop">{t('Import JSON or CSV', 'Importuj JSON lub CSV')}<input type="file" accept=".json,.csv" onChange={event => void importFile(event.target.files?.[0], false)} /></label>
     {records.length > 0 && <><p className="muted">{fileName} · {records.length.toLocaleString()} {t('records', 'rekordów')}</p><details><summary>{t('Input preview (first 3 records)', 'Podgląd wejścia (pierwsze 3 rekordy)')}</summary><pre className="small-pre">{JSON.stringify(records.slice(0, 3), null, 2)}</pre></details><label>{t('Column mapping: source → target; empty target removes column', 'Mapowanie: źródło → cel; pusty cel usuwa kolumnę')}<textarea className="code-input" value={mapping} onChange={event => setMapping(event.target.value)} /></label><label>{t('Transform rules', 'Reguły transformacji')}<textarea className="code-input" value={rules} onChange={event => setRules(event.target.value)} /></label><small>mask · remove · pseudonymize · replace · generate · shiftDate · trim · uppercase · lowercase</small><label>{t('Private pseudonymization key (not saved)', 'Prywatny klucz pseudonimizacji (niezapisywany)')}<input type="password" autoComplete="off" value={secret} onChange={event => setSecret(event.target.value)} /></label><button className="primary" disabled={busy} onClick={() => { try { const mapped = mapColumns(records, parseSafeJson(mapping) as Record<string, string>); run({ type: 'transform', records: mapped, rules: parseSafeJson(rules) as unknown as TransformRule[], secret, config }); setSecret(''); setError(''); } catch (error) { setError(errorMessage(error)); } }}>{t('Transform locally', 'Przekształć lokalnie')}</button></>}
     <hr /><h3>{t('Reference pools', 'Zbiory referencyjne')}</h3><p className="muted">{t('Import a normalized DAR pool or a documented CPR test pool with source metadata. Imported source claims are not independently verified.', 'Importuj znormalizowany DAR lub udokumentowaną pulę CPR z metadanymi źródła. Deklaracje źródłowe nie są niezależnie weryfikowane.')}</p><label className="checkbox"><input type="checkbox" checked={rememberPool} onChange={event => setRememberPool(event.target.checked)} />{t('Save this reference pool on this device', 'Zapisz tę pulę na tym urządzeniu')}</label><label>{t('Reference pool JSON', 'JSON puli referencyjnej')}<input type="file" accept=".json" onChange={event => void importFile(event.target.files?.[0], true)} /></label>{pools.map(pool => <div className="source-row" key={pool.source.id}><span className="tag">{pool.kind.toUpperCase()}</span><span>{pool.source.title}<small>{pool.records.length} · {pool.source.version}</small></span></div>)}
+    {!!records.length && <details><summary>{t('Create a reference pool from mapped records', 'Utwórz pulę referencyjną ze zmapowanych rekordów')}</summary><p className="muted">{t('Map source columns above to the normalized contract described in the repository documentation. Provide the original source and license; these declarations are not verified online.', 'Zmapuj kolumny na format opisany w dokumentacji repozytorium. Podaj oryginalne źródło i licencję; te deklaracje nie są sprawdzane online.')}</p><label>{t('Reference kind', 'Typ referencji')}<select aria-label={t('Reference kind', 'Typ referencji')} value={poolKind} onChange={event => setPoolKind(event.target.value as 'dar' | 'cpr')}><option value="dar">DAR</option><option value="cpr">CPR</option></select></label><label>{t('Source metadata JSON', 'Metadane źródła JSON')}<textarea className="code-input" value={sourceMetadata} onChange={event => setSourceMetadata(event.target.value)} /></label><button disabled={busy} onClick={() => void useMappedReference()}>{t('Use mapped reference pool', 'Użyj zmapowanej puli')}</button></details>}
     {error && <div className="notice danger" role="alert">{error}</div>}
   </section>;
 }
