@@ -45,6 +45,7 @@ export interface DataSchema {
   name: string;
   version: number;
   fields: FieldDefinition[];
+  validationSchema?: Record<string, JsonValue>;
 }
 export interface GenerationConfig {
   seed: string;
@@ -57,6 +58,8 @@ export interface GenerationConfig {
 }
 export interface GenerationManifest {
   engine: string;
+  fakerVersion: string;
+  sourceContentHashes?: Record<string, string>;
   schema: DataSchema;
   seed: string;
   referenceDate: string;

@@ -17,6 +17,9 @@ const config: GenerationConfig = {
   ] },
 };
 describe('schema generation', () => {
+  it('rejects multiplicative output before allocating nested arrays', () => {
+    expect(() => new GenerationSession({ ...config, count: 100000, schema: { ...config.schema, fields: [{ id: 'a', name: 'a', generator: 'array', options: { maxItems: 1000 }, item: { id: 'b', name: 'b', generator: 'text', options: { maxLength: 100000 } } }] } }, registry)).toThrow('256 MiB');
+  });
   it('resolves dependencies and validates each generated row', () => {
     const rows = new GenerationSession(config, registry).nextBatch(50);
     rows.forEach(row => expect(validateRecord(row, config)).toEqual([]));

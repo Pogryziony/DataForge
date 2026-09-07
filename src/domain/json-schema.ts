@@ -99,7 +99,8 @@ export function importJsonSchema(input: unknown): DataSchema {
   }
   const generated = field(root, 'root', 'root', 0, []);
   if (generated.generator !== 'object') throw new DomainError('ROOT_OBJECT', 'Root schema must describe an object');
-  return { id: 'json-schema', name: String(root.title ?? 'Imported JSON Schema'), version: 1, fields: generated.fields ?? [] };
+  compileJsonValidator(root);
+  return { id: 'json-schema', name: String(root.title ?? 'Imported JSON Schema'), version: 1, fields: generated.fields ?? [], validationSchema: structuredClone(root) };
 }
 
 export function compileJsonValidator(schema: object) {

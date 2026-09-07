@@ -55,7 +55,7 @@ export function validateConfiguration(config: GenerationConfig, registry: Map<st
       if (field.locale && !['pl', 'da', 'de', 'en_GB', 'en_US'].includes(field.locale)) throw new DomainError('LOCALE', 'Unsupported field locale', field.name);
       const rates = [field.nullRate ?? 0, field.emptyRate ?? 0, field.missingRate ?? 0];
       if (rates.some(rate => !Number.isFinite(rate) || rate < 0 || rate > 1) || rates.reduce((a, b) => a + b, 0) > 1) throw new DomainError('RATES', 'Rates must total at most 1', field.name);
-      if (field.required && field.missingRate) throw new DomainError('REQUIRED_MISSING', 'Required fields cannot have a missing rate', field.name);
+      if (field.required !== false && field.missingRate) throw new DomainError('REQUIRED_MISSING', 'Required fields cannot have a missing rate', field.name);
       const min = field.options?.min, max = field.options?.max;
       if (typeof min === 'number' && typeof max === 'number' && min > max) throw new DomainError('RANGE', 'Minimum exceeds maximum', field.name);
       if (field.generator === 'object') check(field.fields ?? [], depth + 1);
@@ -69,6 +69,17 @@ export function validateConfiguration(config: GenerationConfig, registry: Map<st
     orderFields(fields);
   }
   check(config.schema.fields, 0);
+  // Bound multiplicative arrays and retained output before allocating records.
+  function estimate(field: FieldDefinition): number {
+    const nameBytes = field.name.length * 2 + 48;
+    if (field.generator === 'object') return nameBytes + (field.fields ?? []).reduce((sum, child) => sum + estimate(child), 0);
+    if (field.generator === 'array') return nameBytes + numberOption(field, 'maxItems', 3) * estimate(field.item!);
+    if (field.generator === 'text') return nameBytes + 2 * (numberOption(field, 'maxLength', 24) + stringOption(field, 'prefix').length + stringOption(field, 'suffix').length);
+    if (field.generator === 'constant' || field.generator === 'enum') return nameBytes + JSON.stringify(field.options?.value ?? field.options?.values ?? null).length * 2;
+    return nameBytes + 256;
+  }
+  const estimatedBytes = config.count * config.schema.fields.reduce((sum, field) => sum + estimate(field), 0);
+  if (!Number.isFinite(estimatedBytes) || estimatedBytes > 256 * 1024 * 1024) throw new DomainError('OUTPUT_BUDGET', 'Estimated output exceeds 256 MiB; reduce record count, text length or nested array sizes');
   config.pools?.forEach(validateReferencePool);
 }
 
@@ -127,7 +138,7 @@ export class GenerationSession {
   }
   get completed(): number { return this.nextIndex; }
   manifest(): GenerationManifest {
-    return { engine: ENGINE_VERSION, schema: structuredClone(this.config.schema), seed: this.config.seed, referenceDate: this.config.referenceDate, locale: this.config.locale, count: this.config.count, sourceVersions: this.config.pools?.map(pool => pool.source) ?? [], provenance: 'synthetic-or-user-imported', registryVerified: false };
+    return { engine: ENGINE_VERSION, fakerVersion: '10.6.0', schema: structuredClone(this.config.schema), seed: this.config.seed, referenceDate: this.config.referenceDate, locale: this.config.locale, count: this.config.count, sourceVersions: this.config.pools?.map(pool => pool.source) ?? [], provenance: 'synthetic-or-user-imported', registryVerified: false };
   }
 }
 

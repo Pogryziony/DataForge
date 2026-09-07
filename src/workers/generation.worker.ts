@@ -39,7 +39,8 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
     if (request.type === 'generate') {
       const registry = createGeneratorRegistry(await loadTextProvider([request.config.locale, ...locales(request.config.schema.fields)]));
       const session = new GenerationSession(request.config, registry);
-      const validateJson = request.jsonSchema ? compileJsonValidator(request.jsonSchema) : undefined;
+      const validationSchema = request.config.schema.validationSchema ?? request.jsonSchema;
+      const validateJson = validationSchema ? compileJsonValidator(validationSchema) : undefined;
       while (session.completed < request.config.count) {
         const batch = session.nextBatch(500);
         for (const [i, row] of batch.entries()) {
@@ -47,15 +48,19 @@ self.onmessage = async (event: MessageEvent<WorkerRequest>) => {
           if (issues.length) throw new DomainError('GENERATED_VALIDATION', `${issues[0].code}: ${issues[0].message}`, issues[0].path);
           if (validateJson && !validateJson(row)) throw new DomainError('JSON_SCHEMA_VALIDATION', 'Generated data violates the imported JSON Schema; adjust explicit generator settings');
           const index = records.length;
-          if (request.negative && ((index * 2654435761) >>> 0) / 4294967296 < request.negative.rate) {
+          if (request.negative && Math.floor((index + 1) * request.negative.rate) > Math.floor(index * request.negative.rate)) {
             const negative = negativeCase(row, request.config, request.negative.field, request.negative.category, session.completed - batch.length + i);
-            records.push({ ...negative.record, _testCase: { caseId: negative.caseId, category: negative.category, fieldPath: negative.fieldPath, expectedViolation: negative.expectedViolation, isolated: negative.isolated, issues: negative.issues.map(item => ({ ...item })) } });
+            records.push({ ...negative.record, _testCase: { caseId: negative.caseId, category: negative.category, fieldPath: negative.fieldPath, expectedViolation: negative.expectedViolation, original: negative.original, isolated: negative.isolated, issues: negative.issues.map(item => ({ ...item })) } });
           } else records.push(row);
         }
         send({ type: 'progress', jobId: request.jobId, completed: session.completed, total: request.config.count });
         await new Promise<void>(resolve => setTimeout(resolve, 0));
       }
       manifest = session.manifest();
+      manifest.sourceContentHashes = Object.fromEntries(await Promise.all((request.config.pools ?? []).map(async pool => {
+        const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(pool.records))));
+        return [pool.source.id, [...digest].map(byte => byte.toString(16).padStart(2, '0')).join('')];
+      })));
       report = request.negative ? 'Negative records include _testCase metadata and all actual validation issues.' : undefined;
     } else if (request.type === 'datasets') {
       const registry = createGeneratorRegistry(await loadTextProvider([request.config.locale, ...request.definitions.flatMap(definition => locales(definition.schema.fields))]));
