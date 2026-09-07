@@ -37,17 +37,15 @@ export class DataForgeDatabase extends Dexie {
       })
       .upgrade(async (transaction) => {
         const templates = (await transaction.table('templates').toArray()) as SavedTemplate[];
-        await transaction
-          .table('revisions')
-          .bulkPut(
-            templates.map((template) => ({
-              key: `${template.id}:1`,
-              templateId: template.id,
-              version: 1,
-              schema: template.schema,
-              savedAt: template.updatedAt,
-            })),
-          );
+        await transaction.table('revisions').bulkPut(
+          templates.map((template) => ({
+            key: `${template.id}:1`,
+            templateId: template.id,
+            version: 1,
+            schema: template.schema,
+            savedAt: template.updatedAt,
+          })),
+        );
       });
   }
 }

@@ -70,13 +70,11 @@ test('builds relational datasets and constrained pairwise coverage', async ({ pa
 });
 test('imports CSV, masks locally and does not run payload text', async ({ page }) => {
   await page.getByRole('link', { name: 'Import & transform', exact: true }).click();
-  await page
-    .getByLabel('Import JSON or CSV')
-    .setInputFiles({
-      name: 'input.csv',
-      mimeType: 'text/csv',
-      buffer: Buffer.from('email,id\nprivate@example.com,00001\n'),
-    });
+  await page.getByLabel('Import JSON or CSV').setInputFiles({
+    name: 'input.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from('email,id\nprivate@example.com,00001\n'),
+  });
   await page.getByRole('button', { name: 'Transform locally' }).click();
   await expect(page.locator('tbody')).toContainText('00001');
   await expect(page.locator('tbody')).not.toContainText('private@example.com');
@@ -88,13 +86,11 @@ test('imports JSON Schema and verifies generated constraints', async ({ page }) 
     required: ['code'],
     properties: { code: { type: 'string', pattern: '^[A-Z]{5}$' } },
   };
-  await page
-    .getByLabel('Import configuration or JSON Schema')
-    .setInputFiles({
-      name: 'schema.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from(JSON.stringify(schema)),
-    });
+  await page.getByLabel('Import configuration or JSON Schema').setInputFiles({
+    name: 'schema.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(schema)),
+  });
   await expect(page.getByLabel('Field name 1', { exact: true })).toHaveValue('code');
   await generate(page);
   await expect(page.locator('tbody tr').first()).toContainText(/[A-Z]{5}/);
@@ -135,13 +131,11 @@ test('cancels a large generation without retaining partial results', async ({ pa
 });
 test('replaces imported values with seeded synthetic data', async ({ page }) => {
   await page.getByRole('link', { name: 'Import & transform', exact: true }).click();
-  await page
-    .getByLabel('Import JSON or CSV')
-    .setInputFiles({
-      name: 'input.json',
-      mimeType: 'application/json',
-      buffer: Buffer.from('[{"email":"private@example.com","id":"0001"}]'),
-    });
+  await page.getByLabel('Import JSON or CSV').setInputFiles({
+    name: 'input.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from('[{"email":"private@example.com","id":"0001"}]'),
+  });
   await page
     .getByLabel('Transform rules')
     .fill('[{"field":"email","operation":"generate","generator":"email"}]');
