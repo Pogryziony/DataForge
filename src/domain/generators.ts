@@ -153,7 +153,11 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
   add('dar', 'DAR reference address', 'Denmark', c => referenceAddress(c.random, c.config.pools ?? [], stringOption(c.field, 'sourceId')));
   add('security', 'Security test string', 'Security', c => {
     const category = stringOption(c.field, 'category', 'unicode');
-    if (category === 'long') return 'A'.repeat(numberOption(c.field, 'length', 10000));
+    if (category === 'long') {
+      const length = numberOption(c.field, 'length', 10000);
+      if (!Number.isInteger(length) || length < 0 || length > 100000) throw new DomainError('TEXT_LIMIT', 'Security samples are limited to 100000 characters');
+      return 'A'.repeat(length);
+    }
     if (!(category in SECURITY_SAMPLES)) throw new DomainError('SECURITY_CATEGORY', 'Unknown security sample');
     return SECURITY_SAMPLES[category as keyof typeof SECURITY_SAMPLES];
   });

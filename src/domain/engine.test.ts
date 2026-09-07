@@ -46,4 +46,11 @@ describe('schema generation', () => {
     const ids = new Set(result.customers.map(row => row.id));
     result.orders.forEach(row => expect(ids.has(row.customerId)).toBe(true));
   });
+  it('retries composite collisions deterministically and reports exhausted combinations', () => {
+    const definition = { name: 'links', count: 4, uniqueTogether: [['left', 'right']], schema: { id: 'links', name: 'Links', version: 1, fields: [{ id: 'id', name: 'id', generator: 'uuid' }, { id: 'left', name: 'left', generator: 'enum', options: { values: ['a', 'b'] } }, { id: 'right', name: 'right', generator: 'enum', options: { values: ['c', 'd'] } }] } };
+    const rows = generateDatasets([definition], config, registry).links;
+    expect(new Set(rows.map(row => `${row.left}:${row.right}`)).size).toBe(4);
+    expect(generateDatasets([definition], config, registry).links).toEqual(rows);
+    expect(() => generateDatasets([{ ...definition, count: 5 }], config, registry)).toThrow('1000 attempts');
+  });
 });

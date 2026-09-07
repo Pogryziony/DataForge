@@ -75,6 +75,8 @@ export function validateConfiguration(config: GenerationConfig, registry: Map<st
     if (field.generator === 'object') return nameBytes + (field.fields ?? []).reduce((sum, child) => sum + estimate(child), 0);
     if (field.generator === 'array') return nameBytes + numberOption(field, 'maxItems', 3) * estimate(field.item!);
     if (field.generator === 'text') return nameBytes + 2 * (numberOption(field, 'maxLength', 24) + stringOption(field, 'prefix').length + stringOption(field, 'suffix').length);
+    if (field.generator === 'security') return nameBytes + 2 * numberOption(field, 'length', 10000);
+    if (field.rule?.operation === 'template') return nameBytes + 2 * String(field.rule.value ?? '').length + 1024;
     if (field.generator === 'constant' || field.generator === 'enum') return nameBytes + JSON.stringify(field.options?.value ?? field.options?.values ?? null).length * 2;
     return nameBytes + 256;
   }
@@ -92,7 +94,7 @@ export class GenerationSession {
     validateConfiguration(config, registry);
     this.random = new SeededRandom(config.seed);
   }
-  private object(fields: FieldDefinition[], path: string, index: number): DataRecord {
+  private object(fields: FieldDefinition[], path: string, index: number, recordAttempt = 0): DataRecord {
     const row: DataRecord = {};
     let ordered = this.sorted.get(fields);
     if (!ordered) { ordered = orderFields(fields); this.sorted.set(fields, ordered); }
@@ -108,13 +110,13 @@ export class GenerationSession {
       const occupied = this.unique.get(fieldPath) ?? new Set<string>();
       let accepted = false;
       for (let attempt = 0; attempt < 1000; attempt++) {
-        const context: GeneratorContext = { random: this.random.fork(index, fieldPath, attempt), row, index, config: this.config, field };
+        const context: GeneratorContext = { random: recordAttempt ? this.random.fork(index, fieldPath, attempt, recordAttempt) : this.random.fork(index, fieldPath, attempt), row, index, config: this.config, field };
         let value: JsonValue;
         if (field.rule) value = applyRule(context);
-        else if (field.generator === 'object') value = this.object(field.fields ?? [], fieldPath, index);
+        else if (field.generator === 'object') value = this.object(field.fields ?? [], fieldPath, index, recordAttempt);
         else if (field.generator === 'array') {
           const count = context.random.integer(numberOption(field, 'minItems', 1), numberOption(field, 'maxItems', 3));
-          value = Array.from({ length: count }, (_, itemIndex) => this.object([field.item!], `${fieldPath}/${itemIndex}`, index)[field.item!.name]);
+          value = Array.from({ length: count }, (_, itemIndex) => this.object([field.item!], `${fieldPath}/${itemIndex}`, index, recordAttempt)[field.item!.name]);
         } else value = this.registry.get(field.generator)!.generate(context);
         if (value === undefined || (typeof value === 'number' && !Number.isFinite(value))) throw new DomainError('GENERATOR_VALUE', 'Generator produced an invalid JSON value', field.name);
         const key = JSON.stringify(value);
@@ -129,11 +131,18 @@ export class GenerationSession {
     }
     return Object.fromEntries(fields.filter(field => Object.hasOwn(row, field.name)).map(field => [field.name, row[field.name]]));
   }
-  nextBatch(size = 500): DataRecord[] {
+  nextBatch(size = 500, accept?: (row: DataRecord) => boolean): DataRecord[] {
     if (!Number.isInteger(size) || size < 1) throw new DomainError('BATCH_SIZE', 'Batch size must be positive');
     const rows: DataRecord[] = [];
     const end = Math.min(this.config.count, this.nextIndex + size);
-    for (; this.nextIndex < end; this.nextIndex++) rows.push(this.object(this.config.schema.fields, this.config.schema.id, this.nextIndex));
+    for (; this.nextIndex < end; this.nextIndex++) {
+      let accepted = false;
+      for (let attempt = 0; attempt < 1000; attempt++) {
+        const row = this.object(this.config.schema.fields, this.config.schema.id, this.nextIndex, attempt);
+        if (!accept || accept(row)) { rows.push(row); accepted = true; break; }
+      }
+      if (!accepted) throw new DomainError('ROW_CONSTRAINT_EXHAUSTED', 'Cannot satisfy record constraints within 1000 attempts; reduce count or relax constraints');
+    }
     return rows;
   }
   get completed(): number { return this.nextIndex; }
@@ -152,7 +161,7 @@ export function validateRecord(row: DataRecord, config: GenerationConfig): Valid
       if (value === null && field.nullRate) continue;
       if (value === '' && field.emptyRate) continue;
       const fail = (code: string, message: string) => issues.push(issue(code, message, path));
-      if (value === null) { fail('NULL', 'Null is not enabled'); continue; }
+      if (value === null) { if (!(field.generator === 'constant' && (field.options?.value ?? null) === null)) fail('NULL', 'Null is not enabled'); continue; }
       if (field.generator === 'object') {
         if (typeof value !== 'object' || Array.isArray(value)) fail('TYPE', 'Expected object');
         else inspect(value, field.fields ?? [], path + '.');

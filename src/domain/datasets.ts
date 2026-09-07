@@ -1,4 +1,4 @@
-import { GenerationSession } from './engine';
+import { GenerationSession, validateRecord } from './engine';
 import { DomainError } from './errors';
 import type { GeneratorDefinition } from './generators';
 import type { DataRecord, DataSchema, FieldDefinition, GenerationConfig } from './types';
@@ -11,6 +11,7 @@ export function datasetDependencies(fields: FieldDefinition[]): string[] {
   ]);
 }
 export function generateDatasets(definitions: DatasetDefinition[], base: Omit<GenerationConfig, 'schema' | 'count' | 'datasets'>, registry: Map<string, GeneratorDefinition>): Record<string, DataRecord[]> {
+  if (!Array.isArray(definitions) || !definitions.length || definitions.some(definition => !definition || !Number.isInteger(definition.count) || definition.count < 1 || !/^(?!__proto__$|constructor$|prototype$)[A-Za-z_][A-Za-z0-9_]*$/.test(definition.name))) throw new DomainError('DATASET_CONFIG', 'Provide named datasets with positive integer counts');
   if (definitions.reduce((count, dataset) => count + dataset.count, 0) > 100000) throw new DomainError('DATASET_LIMIT', 'Combined dataset count cannot exceed 100000');
   const indexed = new Map(definitions.map(dataset => [dataset.name, dataset]));
   if (indexed.size !== definitions.length) throw new DomainError('DATASET_NAME', 'Dataset names must be unique');
@@ -30,15 +31,21 @@ export function generateDatasets(definitions: DatasetDefinition[], base: Omit<Ge
     if (!primary) throw new DomainError('PRIMARY_KEY', 'Dataset needs a primary key field', name);
     primary.unique = true; primary.required = true;
     primary.nullRate = 0; primary.emptyRate = 0; primary.missingRate = 0;
-    const session = new GenerationSession({ ...base, seed: `${base.seed}:${name}`, count: definition.count, schema, datasets: result }, registry);
-    const rows = session.nextBatch(definition.count);
-    for (const keys of definition.uniqueTogether ?? []) {
-      const combinations = new Set<string>();
-      for (const row of rows) {
-        const signature = JSON.stringify(keys.map(key => row[key]));
-        if (combinations.has(signature)) throw new DomainError('COMPOSITE_UNIQUE', 'Duplicate relationship; change seed, counts or constraints', name);
-        combinations.add(signature);
-      }
+    const config = { ...base, seed: `${base.seed}:${name}`, count: definition.count, schema, datasets: result };
+    const session = new GenerationSession(config, registry);
+    const groups = (definition.uniqueTogether ?? []).map(keys => {
+      if (!keys.length || new Set(keys).size !== keys.length || keys.some(key => !schema.fields.some(field => field.name === key))) throw new DomainError('COMPOSITE_FIELDS', 'Composite constraints need distinct existing top-level fields', name);
+      return { keys, used: new Set<string>() };
+    });
+    const rows = session.nextBatch(definition.count, row => {
+      const signatures = groups.map(group => JSON.stringify(group.keys.map(key => row[key])));
+      if (groups.some((group, index) => group.used.has(signatures[index]))) return false;
+      groups.forEach((group, index) => group.used.add(signatures[index]));
+      return true;
+    });
+    for (const row of rows) {
+      const issues = validateRecord(row, config);
+      if (issues.length) throw new DomainError('DATASET_VALIDATION', issues[0].message, `${name}.${issues[0].path}`);
     }
     result[name] = rows; active.delete(name);
   }
