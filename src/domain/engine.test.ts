@@ -129,6 +129,11 @@ describe('schema generation', () => {
     const rows = generateDatasets([definition], config, registry).links;
     expect(new Set(rows.map((row) => `${row.left}:${row.right}`)).size).toBe(4);
     expect(generateDatasets([definition], config, registry).links).toEqual(rows);
+    const sequential = structuredClone(definition);
+    sequential.schema.fields[0].generator = 'sequence';
+    expect(generateDatasets([sequential], config, registry).links.map((row) => row.id)).toEqual([
+      1, 2, 3, 4,
+    ]);
     expect(() => generateDatasets([{ ...definition, count: 5 }], config, registry)).toThrow(
       '1000 attempts',
     );

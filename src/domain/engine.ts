@@ -174,6 +174,7 @@ export function validateConfiguration(
 export class GenerationSession {
   private readonly random: SeededRandom;
   private readonly unique = new Map<string, Set<string>>();
+  private pendingUnique: { path: string; key: string }[] = [];
   private readonly sorted = new Map<FieldDefinition[], FieldDefinition[]>();
   private nextIndex = 0;
   constructor(
@@ -256,6 +257,7 @@ export class GenerationSession {
           if (field.unique) {
             occupied.add(key);
             this.unique.set(fieldPath, occupied);
+            this.pendingUnique.push({ path: fieldPath, key });
           }
           accepted = true;
           break;
@@ -282,6 +284,7 @@ export class GenerationSession {
     for (; this.nextIndex < end; this.nextIndex++) {
       let accepted = false;
       for (let attempt = 0; attempt < 1000; attempt++) {
+        this.pendingUnique = [];
         const row = this.object(
           this.config.schema.fields,
           this.config.schema.id,
@@ -293,6 +296,7 @@ export class GenerationSession {
           accepted = true;
           break;
         }
+        for (const entry of this.pendingUnique) this.unique.get(entry.path)?.delete(entry.key);
       }
       if (!accepted)
         throw new DomainError(
