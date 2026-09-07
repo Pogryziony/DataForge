@@ -101,3 +101,19 @@ test('cancels a large generation without retaining partial results', async ({ pa
   await expect(page.getByText(/Partial results were discarded/)).toBeVisible();
   await expect(page.getByRole('button', { name: 'Export full result' })).toBeDisabled();
 });
+test('replaces imported values with seeded synthetic data', async ({ page }) => {
+  await page.getByRole('link', { name: 'Import & transform', exact: true }).click();
+  await page.getByLabel('Import JSON or CSV').setInputFiles({ name: 'input.json', mimeType: 'application/json', buffer: Buffer.from('[{"email":"private@example.com","id":"0001"}]') });
+  await page.getByLabel('Transform rules').fill('[{"field":"email","operation":"generate","generator":"email"}]');
+  await page.getByRole('button', { name: 'Transform locally' }).click();
+  await expect(page.locator('tbody')).toContainText('tester.');
+  await expect(page.locator('tbody')).toContainText('0001');
+  await expect(page.locator('tbody')).not.toContainText('private@example.com');
+});
+test('captures desktop and mobile workbench layouts', async ({ page }, testInfo) => {
+  await generate(page);
+  await testInfo.attach('desktop', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByLabel('Interface language').selectOption('pl');
+  await testInfo.attach('mobile', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+});
