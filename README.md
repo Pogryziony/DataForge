@@ -13,7 +13,8 @@ A local-first test data workbench for QA engineers and developers. Create reprod
 - Negative cases with a valid original record, mutation category and every detected validation issue. Numeric boundary fixtures are available separately.
 - Local CSV/JSON transformations: mapping, masking, removal, seeded replacement, date shifting and HMAC pseudonymization.
 - JSON, JSONL, CSV, XML, YAML, XLSX and SQL exports, plus Playwright/Cypress fixtures, TypeScript interfaces and Java/REST Assured starter code.
-- Ten starter templates, versioned local templates, backup/restore, run history, PL/EN controls and light/dark themes.
+- Resident datasets for PL, UK, DK, DE and US, including personal details and separate address fields, house/apartment selection and per-field copying.
+- Fifteen starter templates, versioned local templates, backup/restore, run history, PL/EN controls and light/dark themes.
 
 No account, backend, analytics, remote generation API or runtime CDN. After the first successful cache installation, generation and export work offline. Opening the application still requests its static assets from GitHub Pages.
 
@@ -36,6 +37,10 @@ npm run preview
 The initial screen generates Danish CPR samples. Choose **Templates → Danish customer** for coherent birth date, encoded sex and CPR fields. Use **Import & transform** before choosing a DAR reference generator or the official CPR test-pool profile.
 
 ## Reproducible fixtures
+
+Choose **Resident dataset** (`#/resident`) to generate residents with `streetName`, `houseNumber`, `floor`, `door`, `postalCode` and `postalDistrict` as individual columns. The details view follows an address-entry form and supports copying each field or the entire record. Houses have empty floor/door; apartments have both. Export includes the full dataset, even when previewing only the first 250 residents. Use **Customize resident schema** to edit, save or export the template.
+
+PL includes a coherent PESEL and DK includes a coherent standard-profile CPR; UK uses ISO country code `GB` in exports. Other countries do not receive a fabricated national identifier. All addresses remain synthetic and are not verified against postal or population registries.
 
 Keep the schema (including field IDs), seed, locale, reference date, engine/Faker version and ordered source records unchanged. Generation is invariant to batch size. Use the replay manifest to retain configuration, source versions and SHA-256 hashes; reference data itself is not included in the manifest. Keep your authorized source files separately.
 
