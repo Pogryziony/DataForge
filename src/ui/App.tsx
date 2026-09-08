@@ -19,10 +19,13 @@ import {
   Save,
   FileJson,
   History,
+  UserRound,
 } from 'lucide-react';
 import { Preview } from './Preview';
 import { SchemaEditor } from './SchemaEditor';
 import { QuickPanel } from './QuickPanel';
+import { ResidentPanel, ResidentDetails } from './ResidentPanel';
+import { createResidentSchema, type Housing } from '../domain/residents';
 import { ExportPanel } from './ExportPanel';
 import { OfflineStatus } from './OfflineStatus';
 import { DatasetPanel, ImportPanel, TemplatePanel } from './AdvancedPanels';
@@ -80,12 +83,14 @@ export function App() {
   const [negativeField, setNegativeField] = useState('cpr');
   const [mutation, setMutation] = useState<Mutation>('missing');
   const [negativeRate, setNegativeRate] = useState(1);
+  const [housing, setHousing] = useState<Housing>('mixed');
   const {
     register,
     handleSubmit,
     watch,
     getValues,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<Settings>({
     resolver: zodResolver(settingsSchema),
@@ -146,14 +151,16 @@ export function App() {
             version: 1,
             fields: [{ id: 'value', name: 'value', generator, options, required: true }],
           }
-        : schema;
+        : route === '/resident'
+          ? createResidentSchema(values.locale, housing)
+          : schema;
     workbench.run({
       type: 'generate',
       config: { ...values, schema: activeSchema, pools },
       ...(route === '/negative'
         ? { negative: { field: negativeField, category: mutation, rate: negativeRate } }
         : {}),
-      ...(route !== '/quick' && jsonSchema ? { jsonSchema } : {}),
+      ...(['/schema', '/negative'].includes(route) && jsonSchema ? { jsonSchema } : {}),
     });
   });
   async function saveSchema() {
@@ -170,6 +177,7 @@ export function App() {
   }
   const navigation = [
     { path: '/quick', icon: Zap, label: t('Quick generate', 'Szybkie generowanie') },
+    { path: '/resident', icon: UserRound, label: t('Resident dataset', 'Dane mieszkańca') },
     { path: '/schema', icon: SlidersHorizontal, label: t('Schema designer', 'Edytor schematu') },
     { path: '/datasets', icon: Network, label: t('Dataset builder', 'Kreator zbiorów') },
     { path: '/negative', icon: FlaskConical, label: t('Negative cases', 'Przypadki negatywne') },
@@ -179,7 +187,7 @@ export function App() {
   const title =
     navigation.find((item) => item.path === route)?.label ??
     t('Quick generate', 'Szybkie generowanie');
-  const showGenerate = ['/quick', '/schema', '/negative'].includes(route);
+  const showGenerate = ['/quick', '/resident', '/schema', '/negative'].includes(route);
   return (
     <div className="app-shell">
       <aside className="sidebar">
@@ -203,7 +211,7 @@ export function App() {
             >
               <Icon size={18} />
               <span>{label}</span>
-              {path === '/templates' && <small>10</small>}
+              {path === '/templates' && <small>{TEMPLATES.length}</small>}
             </NavLink>
           ))}
         </nav>
@@ -219,7 +227,7 @@ export function App() {
             </p>
           </div>
           <a href="https://github.com/Pogryziony/DataForge" target="_blank" rel="noreferrer">
-            GitHub <span>DataForge v1.0</span>
+            GitHub <span>DataForge v1.1</span>
           </a>
         </div>
       </aside>
@@ -335,6 +343,15 @@ export function App() {
           )}
           <div className="work-grid">
             <div className="configuration-column">
+              {route === '/resident' && (
+                <ResidentPanel
+                  locale={settings.locale}
+                  onLocale={(locale) => setValue('locale', locale)}
+                  housing={housing}
+                  onHousing={setHousing}
+                  onEdit={() => selectSchema(createResidentSchema(settings.locale, housing))}
+                />
+              )}
               {route === '/quick' && (
                 <QuickPanel
                   generator={generator}
@@ -565,6 +582,7 @@ export function App() {
               </form>
             </div>
             <div className="results-column">
+              {route === '/resident' && <ResidentDetails rows={workbench.rows} />}
               <Preview
                 rows={workbench.rows}
                 count={workbench.count}

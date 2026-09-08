@@ -28,7 +28,7 @@ import type {
   JsonValue,
 } from './types';
 
-export const ENGINE_VERSION = 'dataforge-1.0.0';
+export const ENGINE_VERSION = 'dataforge-1.1.0';
 const safeName = /^(?!__proto__$|constructor$|prototype$)[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function orderFields(fields: FieldDefinition[]): FieldDefinition[] {

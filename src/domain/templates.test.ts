@@ -8,7 +8,9 @@ import { SeededRandom } from './random';
 import type { ReferencePool } from './types';
 
 it('generates every built-in non-reference template and checks the full record', async () => {
-  const registry = createGeneratorRegistry(await loadTextProvider(['pl', 'da']));
+  const registry = createGeneratorRegistry(
+    await loadTextProvider(['pl', 'da', 'de', 'en_GB', 'en_US']),
+  );
   for (const template of TEMPLATES.filter((template) => template.id !== 'dar-address')) {
     const config = {
       seed: 'templates',

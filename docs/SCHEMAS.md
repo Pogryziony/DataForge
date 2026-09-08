@@ -50,6 +50,10 @@ Dependencies are evaluated in topological order, independent of display order. C
 
 ## Common options
 
+Resident templates for PL, UK, DK, DE and US use the `residentAddressPart` generator with `options.part` (`streetName`, `houseNumber`, `floor`, `door`, `postalCode`, `postalDistrict`, `formattedAddress`) and `options.housing` (`mixed`, `house`, `apartment`). Components in the same schema/row/locale/housing and optional `group` share an address stream, independent of display order. Keep those settings identical across the component fields. Use a different group for a second address. The default part is streetName.
+
+Country-specific templates fix field locales so changing the run locale does not mix nationalities, telephone prefixes and addresses. UK fixture postcodes are built with an outward code and a digit/two-letter inward code, following the structure described by [ONS](https://www.ons.gov.uk/methodology/geography/ukgeographies/postalgeography) and the [NHS data dictionary](https://v2.datadictionary.nhs.uk/data_dictionary/data_field_notes/p/postcode_de.asp%40shownav%3D0.html). Geographic allocation, deliverability and postcode/street matching are not verified. The exported `geographicConsistency` and `registryVerified` fields make that limitation explicit. Existing general-purpose address generators remain unchanged.
+
 | Generator                          | Options                                                                                                          |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `integer`, `amount`                | `min`, `max`; amount is integer minor currency units                                                             |

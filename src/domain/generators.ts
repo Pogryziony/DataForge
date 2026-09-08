@@ -4,6 +4,7 @@ import { generateCpr, generateCvr, generatePNumber, decodeCpr } from './identifi
 import { generateNip, generatePesel, generatePolishId, generateRegon } from './identifiers/poland';
 import { generateIban, type IbanCountry } from './identifiers/banking';
 import { referenceAddress, syntheticDanishAddress } from './addresses';
+import { createResidentAddressGenerator } from './residents';
 import type { SeededRandom } from './random';
 import type {
   CprProfile,
@@ -320,6 +321,12 @@ export function createGeneratorRegistry(text: TextProvider): Map<string, Generat
       throw new DomainError('SECURITY_CATEGORY', 'Unknown security sample');
     return SECURITY_SAMPLES[category as keyof typeof SECURITY_SAMPLES];
   });
+  add(
+    'residentAddressPart',
+    'Resident address component',
+    'Address',
+    createResidentAddressGenerator(text),
+  );
   return new Map(definitions.map((definition) => [definition.id, definition]));
 }
 

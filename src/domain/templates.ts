@@ -1,11 +1,12 @@
 import type { DataSchema, FieldDefinition } from './types';
 import type { DatasetDefinition } from './datasets';
+import { createResidentSchema, RESIDENT_COUNTRIES } from './residents';
 
 export interface Template {
   id: string;
   name: string;
   description: string;
-  country: 'PL' | 'DK' | 'Global';
+  country: 'PL' | 'DK' | 'GB' | 'DE' | 'US' | 'Global';
   schema: DataSchema;
 }
 const field = (
@@ -161,6 +162,17 @@ export const TEMPLATES: Template[] = [
     ],
   ),
 ];
+
+TEMPLATES.push(
+  ...RESIDENT_COUNTRIES.map((country) => ({
+    id: `resident-${country.code.toLowerCase()}`,
+    name: `${country.code === 'GB' ? 'UK' : country.code} resident with address`,
+    description:
+      'Personal details and separate street, house, floor, door, postcode and postal district fields.',
+    country: country.code,
+    schema: createResidentSchema(country.locale),
+  })),
+);
 
 export const RELATIONAL_TEMPLATE: DatasetDefinition[] = [
   { name: 'customers', count: 5, schema: TEMPLATES[1].schema },

@@ -157,3 +157,62 @@ test('captures desktop and mobile workbench layouts', async ({ page }, testInfo)
     contentType: 'image/png',
   });
 });
+
+for (const [locale, country] of [
+  ['pl', 'PL'],
+  ['en_GB', 'GB'],
+  ['da', 'DK'],
+  ['de', 'DE'],
+  ['en_US', 'US'],
+]) {
+  test(`generates and exports ${country} residents with address details`, async ({
+    page,
+  }, testInfo) => {
+    await page.getByRole('link', { name: 'Resident dataset', exact: true }).click();
+    await page.getByLabel('Resident country', { exact: true }).selectOption(locale);
+    await page.getByLabel('Housing type', { exact: true }).selectOption('apartment');
+    await page.getByLabel('Records', { exact: true }).fill('25');
+    await generate(page);
+    const details = page.getByRole('region', { name: 'Resident details', exact: true });
+    for (const label of [
+      'Street name',
+      'House number',
+      'Floor',
+      'Door',
+      'Postcode',
+      'Postal district',
+    ])
+      await expect(details.getByLabel(label, { exact: true })).not.toHaveValue('');
+    await page.getByLabel('Resident record', { exact: true }).selectOption('24');
+    const postcode = await details.getByLabel('Postcode', { exact: true }).inputValue();
+    const downloadPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Export full result' }).click();
+    const download = await downloadPromise;
+    const rows = JSON.parse(await readFile((await download.path())!, 'utf8'));
+    expect(rows).toHaveLength(25);
+    expect(rows[24].postalCode).toBe(postcode);
+    rows.forEach((row: Record<string, unknown>) => {
+      expect(row.country).toBe(country);
+      expect(row.registryVerified).toBe(false);
+      expect(row.streetName).toBeTruthy();
+      expect(row.postalDistrict).toBeTruthy();
+    });
+    if (country === 'DK') {
+      await testInfo.attach('resident-desktop', {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.getByLabel('Interface language').selectOption('pl');
+      const size = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        content: document.documentElement.scrollWidth,
+      }));
+      expect(size.content).toBeLessThanOrEqual(size.viewport + 1);
+      await testInfo.attach('resident-mobile', {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      });
+    }
+  });
+}
